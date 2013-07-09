@@ -34,6 +34,7 @@ import org.eclipse.jdt.core.JavaModelException
 import scala.tools.eclipse.InteractiveCompilationUnit
 import scala.tools.eclipse.sourcefileprovider.SourceFileProvider
 import org.eclipse.core.runtime.IPath
+import scala.tools.eclipse.logging.HasLogger
 
 
 class ScalaSourceFileProvider extends SourceFileProvider {
@@ -41,7 +42,7 @@ class ScalaSourceFileProvider extends SourceFileProvider {
     ScalaSourceFile.createFromPath(path.toString)
 }
 
-object ScalaSourceFile {
+object ScalaSourceFile extends HasLogger {
   val handleFactory = new HandleFactory
 
   def createFromPath(path : String) : Option[ScalaSourceFile] = {
@@ -49,6 +50,7 @@ object ScalaSourceFile {
       None
     else {
       val openable = handleFactory.createOpenable(path, null)
+      logger.debug(s"openable: $openable, ${openable.getPath().toString}")
       openable match {
         case ssf : ScalaSourceFile => Some(ssf)
         case _ => None

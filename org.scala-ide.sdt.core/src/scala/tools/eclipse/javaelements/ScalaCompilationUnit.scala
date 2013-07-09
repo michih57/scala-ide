@@ -232,6 +232,7 @@ trait ScalaCompilationUnit extends Openable
   }
 
   override def reportMatches(matchLocator : MatchLocator, possibleMatch : PossibleMatch) {
+    // FIXME: make dependent if in refactoring!!!
     doWithSourceFile { (sourceFile, compiler) =>
       val response = new Response[compiler.Tree]
       compiler.askLoadedTyped(sourceFile, response)

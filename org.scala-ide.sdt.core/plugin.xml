@@ -1157,6 +1157,70 @@
          </action>         
      </actionSet>
    </extension>
+   
+   <extension
+       point="org.eclipse.ltk.core.refactoring.renameParticipants">
+     <renameParticipant
+           id="scala.tools.eclipse.refactoring.java.renameparticipant"
+           class="scala.tools.eclipse.refactoring.rename.java.JavaRenameParticipant"
+           name="JavaRenameParticipant">
+         <enablement>
+           <or>
+             <with
+               variable="element">
+               <instanceof
+                     value="org.eclipse.jdt.core.IType">
+               </instanceof>
+             </with>
+             <with
+               variable="element">
+               <instanceof
+                     value="org.eclipse.jdt.core.IMember">
+               </instanceof>
+             </with>
+             <with
+               variable="element">
+               <instanceof
+                     value="org.eclipse.jdt.core.IAnnotation">
+               </instanceof>
+             </with>
+             <with
+               variable="element">
+               <instanceof
+                     value="org.eclipse.jdt.core.IPackageDeclaration">
+               </instanceof>
+             </with>
+             <with
+               variable="element">
+               <instanceof
+                     value="org.eclipse.jdt.core.IPackageFragment">
+               </instanceof>
+             </with>
+             <with
+               variable="element">
+               <instanceof
+                     value="org.eclipse.jdt.core.IPackageFragmentRoot">
+               </instanceof>
+             </with>
+             <with
+               variable="element">
+               <instanceof
+                     value="org.eclipse.jdt.core.">
+               </instanceof>
+             </with>
+             
+           </or>
+           <with
+               variable="affectedNatures">
+             <iterate operator="or">
+               <equals
+                   value="org.scala-ide.sdt.core.scalanature">
+               </equals>
+             </iterate>
+           </with>
+         </enablement>
+     </renameParticipant>
+   </extension>
 
   <extension
       point="org.eclipse.ui.commands">
