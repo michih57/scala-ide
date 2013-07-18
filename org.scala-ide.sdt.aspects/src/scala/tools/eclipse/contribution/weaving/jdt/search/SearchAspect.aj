@@ -26,6 +26,7 @@ public privileged aspect SearchAspect {
     execution(String getSourceFileName()) &&
     target(pm);
     
+  
   boolean around(MatchLocator ml, PossibleMatch possibleMatch, boolean mustResolve) throws CoreException :
     parseAndBuildBindings(ml, possibleMatch, mustResolve) {
     if (!(possibleMatch.openable instanceof IScalaCompilationUnit))
