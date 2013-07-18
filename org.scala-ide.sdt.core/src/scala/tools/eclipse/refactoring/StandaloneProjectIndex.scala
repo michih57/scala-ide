@@ -53,17 +53,21 @@ object StandaloneProjectIndex {
     }
 
     def collectAllScalaSources(files: Seq[String]): List[SourceFile] = {
-      val allScalaSourceFiles = files flatMap { f =>
-        if(pm.isCanceled)
-          return Nil
-        else
-          ScalaSourceFile.createFromPath(f)
-      } toList
+      val allScalaSourceFiles = {
+        val sourceFiles = files flatMap { f =>
+          if (pm.isCanceled)
+            return Nil
+          else
+            ScalaSourceFile.createFromPath(f)
+        }
+        sourceFiles.toList
+      }
 
       allScalaSourceFiles map { ssf =>
         if(pm.isCanceled)
           return Nil
-        else ssf.withSourceFile { (sourceFile, _) => sourceFile}()
+        else
+          ssf.withSourceFile { (sourceFile, _) => sourceFile}()
       }
     }
 
