@@ -232,19 +232,18 @@ trait ScalaCompilationUnit extends Openable
   }
 
   override def reportMatches(matchLocator : MatchLocator, possibleMatch : PossibleMatch) {
-    // FIXME: make dependent if in refactoring!!!
-    doWithSourceFile { (sourceFile, compiler) =>
-      val response = new Response[compiler.Tree]
-      compiler.askLoadedTyped(sourceFile, response)
-      response.get match {
-        case Left(tree) =>
-          compiler.askOption { () =>
-            compiler.MatchLocator(this, matchLocator, possibleMatch).traverse(tree)
-          }
-        case _ => () // no op
-      }
-
-    }
+//    doWithSourceFile { (sourceFile, compiler) =>
+//      val response = new Response[compiler.Tree]
+//      compiler.askLoadedTyped(sourceFile, response)
+//      response.get match {
+//        case Left(tree) =>
+//          compiler.askOption { () =>
+//            compiler.MatchLocator(this, matchLocator, possibleMatch).traverse(tree)
+//          }
+//        case _ => () // no op
+//      }
+//
+//    }
   }
 
   override def createOverrideIndicators(annotationMap : JMap[_, _]) {

@@ -15,8 +15,8 @@ import scala.tools.eclipse.ScalaProject
 
 object StandaloneProjectIndex {
 
-  type CleanupHandler = () => Unit  
-  
+  type CleanupHandler = () => Unit
+
   /**
    * Builds an index from all the source files in the current project. The returned
    * CleanupHandler needs to be called when the index isn't used anymore, this will
@@ -28,7 +28,7 @@ object StandaloneProjectIndex {
   def buildFullProjectIndex(pm: IProgressMonitor, indexes: GlobalIndexes, project: ScalaProject, hints: List[String] = Nil): (indexes.IndexLookup, CleanupHandler) = {
 
     import indexes.global
-    
+
     def allProjectSourceFiles: Seq[String] = {
       if(hints.isEmpty) {
         project.allSourceFiles map (_.getFullPath.toString) toSeq
@@ -163,5 +163,5 @@ object StandaloneProjectIndex {
 
     (indexes.GlobalIndex(cus), cleanup)
   }
-  
+
 }

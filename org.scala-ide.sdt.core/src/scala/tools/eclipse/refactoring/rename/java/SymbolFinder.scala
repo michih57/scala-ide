@@ -17,21 +17,32 @@ import org.eclipse.jdt.core.IPackageFragment
 trait SymbolFinder extends HasLogger {
 
   case class Match(sourceFile: ScalaSourceFile, start: Int, end: Int)
-  
+
   def find(pm: IProgressMonitor, javaElement: IJavaElement, project: ScalaProject): Option[Match] = {
-    
-    val globalIndexesOpt = project.withPresentationCompiler(compiler => { 
+
+    logger.debug(s"finding symbol for java element: ${javaElement.getElementName()}")
+
+    val globalIndexesOpt = project.withPresentationCompiler(compiler => {
       val globalIndexes = new GlobalIndexes {
         val global = compiler
         var index = EmptyIndex
-        
-        val jSymbol= global.ask { () =>
+
+        val jSymbol = global.ask { () =>
           javaElement match {
-            case iType: IType => global.rootMirror.getClass(global.newTypeName(iType.getFullyQualifiedName()))
+            case iType: IType => global.rootMirror.getClassByName(global.newTypeName(iType.getFullyQualifiedName()))
             case iMember: IMember => {
               val declaringType = iMember.getDeclaringType()
-              val classSymbol = global.rootMirror.getClass(global.newTypeName(declaringType.getFullyQualifiedName()))
-              classSymbol.info.member(global.newTermName(iMember.getElementName()))
+              val classSymbol = global.rootMirror.getClassByName(global.newTypeName(declaringType.getFullyQualifiedName()))
+              logger.debug(s"members of owning class: ${classSymbol.info.members}")
+              val memberName = global.newTermName(iMember.getElementName())
+              val classMember = classSymbol.info.member(memberName)
+              if(global.NoSymbol != classMember) {
+                classMember
+              } else {
+                val companion = classSymbol.companionModule
+                logger.debug(s"members of companion: ${companion.info.declarations}")
+                companion.info.member(global.newTermName(iMember.getElementName()))
+              }
             }
             case iAnnotation: IAnnotation => ???
             case iPackageDeclaration: IPackageDeclaration => global.rootMirror.getPackage(global.newTermName(iPackageDeclaration.getElementName()))
@@ -41,12 +52,13 @@ trait SymbolFinder extends HasLogger {
       }
       Option(globalIndexes)
     })(None)
-    
+
     val result = globalIndexesOpt.flatMap { globalIndexes =>
       val (index, cleanup) = StandaloneProjectIndex.buildFullProjectIndex(pm, globalIndexes, project, List(javaElement.getElementName()))
       project.withPresentationCompiler { compiler =>
         compiler.ask { () =>
           val occs = index.occurences(globalIndexes.jSymbol)
+          logger.debug(s"occurrences of selected symbol: $occs")
           val position = occs.headOption.map(t => t.pos)
           val matched = position.flatMap(pos => {
             val start = pos.start
@@ -65,8 +77,8 @@ trait SymbolFinder extends HasLogger {
 
       }(None)
     }
-    
+
     result
   }
-  
+
 }

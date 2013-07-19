@@ -45,6 +45,6 @@ trait FullProjectIndex extends HasLogger {
    * @param hints If present, only files that contain one of these Strings is added
    *              to the index. It uses the JDT SearchEngine to search files.
    */
-  def buildFullProjectIndex(pm: IProgressMonitor, hints: List[String]): (refactoring.IndexLookup, CleanupHandler) = 
+  def buildFullProjectIndex(pm: IProgressMonitor, hints: List[String]): (refactoring.IndexLookup, CleanupHandler) =
     StandaloneProjectIndex.buildFullProjectIndex(pm, refactoring, project, hints)
 }
