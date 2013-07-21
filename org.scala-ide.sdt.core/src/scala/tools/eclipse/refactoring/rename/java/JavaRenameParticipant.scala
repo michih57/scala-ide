@@ -24,11 +24,11 @@ import org.eclipse.jdt.core.IPackageFragment
 
 class JavaRenameParticipant extends RenameParticipant with HasLogger with SymbolFinder {
 
-  private var jSymbol: Option[ScalaPresentationCompiler#Symbol] = None
-
   private var selectedElement: Option[IJavaElement] = None
 
   private var change: Change = null
+
+  private var refactoring: Option[GlobalRenameAction#RenameScalaIdeRefactoring] = None
 
   override def initialize(element: Any) = {
     logger.debug(s"initializing JavaRenameParticipant for: ${element.getClass.getName}")
@@ -62,43 +62,56 @@ class JavaRenameParticipant extends RenameParticipant with HasLogger with Symbol
 
   def checkConditions(pm: IProgressMonitor, context: CheckConditionsContext): RefactoringStatus = {
     // TODO: do checkInitialConditions here
-    new RefactoringStatus()
-  }
-  def createChange(pm: IProgressMonitor): Change = {
-    logger.debug("creating JavaRenameParticipant change")
-    val args = getArguments()
-    logger.debug(s"arguments: $args")
 
-    val typeMatch = selectedElement.flatMap{ iType =>
+    val scalaMatch = selectedElement.flatMap{ javaElement =>
       logger.debug("looking for occurrence of selected type in scala source")
-      val scalaProject = ScalaPlugin.plugin.getScalaProject(iType.getJavaProject().getProject)
-      val matchOpt = find(pm, iType, scalaProject)
+      val scalaProject = ScalaPlugin.plugin.getScalaProject(javaElement.getJavaProject().getProject)
+      val matchOpt = find(pm, javaElement, scalaProject)
       if(matchOpt.isEmpty)
         logger.debug("no match found")
       matchOpt.foreach(m => logger.debug(s"found a match in: ${m.sourceFile.file.path}, start <${m.start}>, end <${m.end}>."))
       matchOpt
     }
 
-    val result = typeMatch map { case Match( scalaSourceFile, start, end) =>
-      val renameRefactoring = {
+    refactoring = scalaMatch collect { case Match(scalaSourceFile, start, end) =>
         val renameAction = new GlobalRenameAction
         new renameAction.RenameScalaIdeRefactoring(start, end, scalaSourceFile)
+    }
+
+    val args = getArguments()
+    logger.debug(s"arguments: $args")
+
+    val statusOpt = refactoring.map { rename =>
+      val initialStatus = rename.checkInitialConditions(pm)
+      if(initialStatus.isOK()) {
+        val finalStatus = rename.checkFinalConditions(pm)
+        finalStatus.getEntries().foreach(initialStatus.addEntry)
       }
 
+      initialStatus
+    }
+
+    logger.debug(statusOpt)
+
+    def noRefactoringStatus = RefactoringStatus.createInfoStatus("No Scala participant for Java Rename created")
+    statusOpt.getOrElse(noRefactoringStatus)
+  }
+
+  def createChange(pm: IProgressMonitor): Change = {
+    logger.debug("creating JavaRenameParticipant change")
+
+    val result = refactoring map { renameRefactoring =>
       import renameRefactoring._
 
-      val initialConditions = checkInitialConditions(pm)
-
-      name = args.getNewName()
-      val finalConditions = checkFinalConditions(pm)
-
       if(!pm.isCanceled()) {
+        name = getArguments().getNewName()
         val allChanges = performRefactoring()
-        allChanges.foreach{ c => c match {
-          case _ => logger.debug(s"change: ${c}")
+        allChanges.foreach { c =>
+          c match {
+            case _ => logger.debug(s"change: ${c}")
+          }
         }
 
-        }
         val changes = allChanges collect {
           case tc: TextChange => tc
         }
