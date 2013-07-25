@@ -29,6 +29,11 @@ trait SymbolFinder extends HasLogger {
 
         val jSymbol = global.ask { () =>
           javaElement match {
+            case iType: IType if iType.isAnnotation() =>
+              logger.debug("got an annotation")
+              val clazz = global.rootMirror.getClassByName(global.newTypeName(iType.getFullyQualifiedName()))
+              logger.debug(s"annotation class: $clazz")
+              clazz
             case iType: IType => global.rootMirror.getClassByName(global.newTypeName(iType.getFullyQualifiedName()))
             case iMember: IMember => {
               val declaringType = iMember.getDeclaringType()
@@ -59,7 +64,16 @@ trait SymbolFinder extends HasLogger {
         compiler.ask { () =>
           val occs = index.occurences(globalIndexes.jSymbol)
           logger.debug(s"occurrences of selected symbol: $occs")
-          val position = occs.headOption.map(t => t.pos)
+          val occ = occs.headOption
+          val position = javaElement match {
+            case iType: IType if iType.isAnnotation() => occ.flatMap { o =>
+              val annotations = o.symbol.annotations
+              annotations.find(a => a.symbol == globalIndexes.jSymbol).map { a =>
+                a.pos
+              }
+            } orElse(occ.map(_.pos))
+            case _ => occ.map(t => t.pos)
+          }
           val matched = position.flatMap(pos => {
             val start = pos.start
             val end = pos.end

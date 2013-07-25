@@ -116,9 +116,13 @@ class RenameAction extends ActionAdapter with HasLogger {
           new refactoring.FileSelection(file.file, tree, start, end)
         }
 
-        val selectedSymbol = selection.flatMap(_.selectedSymbolTree).map(_.symbol)
+//        val selectedSymbol = selection.flatMap(_.selectedSymbolTree).map(_.symbol)
+        val selectedAnnotation = selection.flatMap(_.selectedAnnotation)
+        val selectedSymbol = selection.flatMap { s =>
+          s.selectedAnnotation.orElse(s.selectedSymbolTree.map(_.symbol))
+        }
 
-        val isJavaSymbol = selection.flatMap(_.selectedSymbolTree).map(tree => tree.symbol.isJava).getOrElse(false)
+        val isJavaSymbol = selectedSymbol.map(s => s.isJava).getOrElse(false)
         logger.info("is java symbol rename: " + isJavaSymbol)
 
         val javaElement = if(isJavaSymbol) selectedSymbol.flatMap(s => findJavaDeclaration(s, scalaFile)) else None
@@ -181,7 +185,7 @@ class RenameAction extends ActionAdapter with HasLogger {
           }
         }
       }
-      engine.search(pattern, Array(SearchEngine.getDefaultSearchParticipant()), scope, requestor, new NullProgressMonitor)
+      engine.search(pattern, Array(SearchEngine.getDefaultSearchParticipant()), scope, requestor, new NullProgressMonitor) // TODO: use proper progress monitor
 
       declaration
     }

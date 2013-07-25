@@ -70,7 +70,7 @@ class GlobalRenameAction extends RefactoringAction {
 
       if(!status.hasError) {
 
-        val selectedSymbol = refactoring.findSelectedSymbol(preparationResult.right.get.selectedTree, selection())//preparationResult.right.get.selectedTree.symbol // only reachable if it's a Right value
+        val selectedSymbol = refactoring.findSelectedSymbol(preparationResult.right.get.selectedTree, selection())
 
         name = selectedSymbol match {
           case sym if sym.isSetter => sym.getter(sym.owner).nameString
