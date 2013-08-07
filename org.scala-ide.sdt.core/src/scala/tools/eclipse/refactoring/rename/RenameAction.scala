@@ -32,6 +32,8 @@ import org.eclipse.ui.PlatformUI
 import org.eclipse.jdt.core.IField
 
 /**
+ * TODO: update comment to reflect refactorings of java elements
+ *
  * This implementation supports renaming of all identifiers that occur in the program.
  * For example, local values and variables, method definitions and parameters, class
  * fields, variable bindings in pattern matches, classes, objects, traits, and types parameters.
@@ -61,48 +63,8 @@ class RenameAction extends ActionAdapter with HasLogger {
     }
   }
 
-  // TODO: get rid of this (used in quickfix.ProposalRefactoringActionAdapter)
-  @Deprecated
-  def getScalaRenameAction = if (isLocalRename) new LocalRenameAction else new GlobalRenameAction
-
-  /**
-   * Using the currently opened file and selection, determines whether the
-   * selected SymbolTree is only locally visible or not.
-   */
-  @Deprecated
-  private def isLocalRename: Boolean = {
-
-    val isLocalRename = EditorHelpers.withScalaFileAndSelection { (scalaFile, selected) =>
-      scalaFile.withSourceFile{(file, compiler) =>
-        val refactoring = new Rename with GlobalIndexes {
-          val global = compiler
-          val index = EmptyIndex
-        }
-
-        val selection = refactoring.askLoadedAndTypedTreeForFile(file).left.toOption map { tree =>
-          val start = selected.getOffset
-          val end = start + selected.getLength
-          new refactoring.FileSelection(file.file, tree, start, end)
-        }
-
-        val selectedSymbol = selection.flatMap(_.selectedSymbolTree).map(_.symbol)
-        val isJavaSymbol = selectedSymbol.map(_.isJava)
-        logger.info("is java symbol rename: " + isJavaSymbol)
-
-
-
-        selection map refactoring.prepare flatMap (_.right.toOption) map {
-          case refactoring.PreparationResult(_, isLocal) => isLocal
-          case _ => false
-        }
-      }()
-    } getOrElse false
-
-    isLocalRename
-  }
-
   // TODO: find some way to sanely deal with selections that can't be renamed (FailAction?)
-  private def getRenameAction: Either[RefactoringAction, RenameSupport] = {
+  def getRenameAction: Either[RefactoringAction, RenameSupport] = {
     val actionOpt = EditorHelpers.withScalaFileAndSelection { (scalaFile, selected) =>
       scalaFile.withSourceFile{ (file, compiler) =>
         val refactoring = new Rename with GlobalIndexes {
@@ -116,7 +78,6 @@ class RenameAction extends ActionAdapter with HasLogger {
           new refactoring.FileSelection(file.file, tree, start, end)
         }
 
-//        val selectedSymbol = selection.flatMap(_.selectedSymbolTree).map(_.symbol)
         val selectedAnnotation = selection.flatMap(_.selectedAnnotation)
         val selectedSymbol = selection.flatMap { s =>
           s.selectedAnnotation.orElse(s.selectedSymbolTree.map(_.symbol))

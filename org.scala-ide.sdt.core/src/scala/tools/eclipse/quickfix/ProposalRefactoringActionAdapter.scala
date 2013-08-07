@@ -26,10 +26,11 @@ abstract class ProposalRefactoringActionAdapter(
 
   def isValidProposal : Boolean = {
     val ra = action match {
-      case refactoringAction: RefactoringAction => refactoringAction
-      case renameAction : RenameAction => renameAction.getScalaRenameAction
+      case refactoringAction: RefactoringAction => Some(refactoringAction)
+      // TODO integrate refactorings on java elements (getRenameAction.right)
+      case renameAction : RenameAction => renameAction.getRenameAction.left.toOption
     }
-    ra.createScalaIdeRefactoringForCurrentEditorAndSelection match {
+    ra.flatMap(_.createScalaIdeRefactoringForCurrentEditorAndSelection) match {
       // TODO not sure if this null here is very safe
       case Some(refactoring) => !refactoring.checkInitialConditions(new NullProgressMonitor).hasWarning
       case None  => false

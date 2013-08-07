@@ -13,6 +13,7 @@ import org.eclipse.jdt.core.IMember
 import org.eclipse.jdt.core.IPackageDeclaration
 import org.eclipse.jdt.core.IAnnotation
 import org.eclipse.jdt.core.IPackageFragment
+import org.eclipse.core.resources.IResource
 
 trait SymbolFinder extends HasLogger {
 
@@ -49,9 +50,12 @@ trait SymbolFinder extends HasLogger {
                 companion.info.member(global.newTermName(iMember.getElementName()))
               }
             }
-            case iAnnotation: IAnnotation => ???
-            case iPackageDeclaration: IPackageDeclaration => global.rootMirror.getPackage(global.newTermName(iPackageDeclaration.getElementName()))
-            case iPackageFragment: IPackageFragment => global.rootMirror.getPackage(global.newTermName(iPackageFragment.getElementName()))
+            case iAnnotation: IAnnotation =>
+              logger.debug(s"java element is IAnnotation: $iAnnotation")
+              ???
+//            case iPackageDeclaration: IPackageDeclaration => global.rootMirror.getPackage(global.newTermName(iPackageDeclaration.getElementName()))
+//            case iPackageFragment: IPackageFragment => global.rootMirror.getPackage(global.newTermName(iPackageFragment.getElementName()))
+            case _ => global.NoSymbol
           }
         }
       }
@@ -83,6 +87,7 @@ trait SymbolFinder extends HasLogger {
             val projectPath = jProject.getLocation
             val relativePath = path.makeRelativeTo(projectPath)
             val hackedPath = new Path(projectName).append(relativePath).makeAbsolute()
+            // TODO Mirko: is there a better way to get the ScalaSourceFile?
             val file = ScalaSourceFile.createFromPath(hackedPath.toString())
             file.map(Match(_, start, end))
           })

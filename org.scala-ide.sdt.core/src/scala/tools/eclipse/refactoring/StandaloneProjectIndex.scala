@@ -73,7 +73,7 @@ object StandaloneProjectIndex {
 
     /**
      * First loads all the source files into the compiler and then starts
-     * typeckecking them. The method won't block until typechecking is done
+     * typechecking them. The method won't block until typechecking is done
      * but return all the Response objects instead.
      *
      * If the process gets canceled, no more new typechecks will be started.
