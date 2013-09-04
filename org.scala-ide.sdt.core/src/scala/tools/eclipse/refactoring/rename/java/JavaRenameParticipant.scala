@@ -92,11 +92,12 @@ class JavaRenameParticipant extends RenameParticipant with HasLogger with Symbol
 
     logger.debug(statusOpt)
 
-    def noRefactoringStatus = RefactoringStatus.createInfoStatus("No Scala participant for Java Rename created")
-    statusOpt.getOrElse(noRefactoringStatus)
+    statusOpt.getOrElse(new RefactoringStatus)
   }
 
-  def createChange(pm: IProgressMonitor): Change = {
+  // We need to do the change computation here, because for package renames
+  // the resources change and this leads to troubles when the changes are applied to the old resources.
+  override def createPreChange(pm: IProgressMonitor): Change = {
     logger.debug("creating JavaRenameParticipant change")
 
     val result = refactoring map { renameRefactoring =>
@@ -105,11 +106,7 @@ class JavaRenameParticipant extends RenameParticipant with HasLogger with Symbol
       if(!pm.isCanceled()) {
         name = getArguments().getNewName()
         val allChanges = performRefactoring()
-        allChanges.foreach { c =>
-          c match {
-            case _ => logger.debug(s"change: ${c}")
-          }
-        }
+        allChanges.foreach { c => logger.debug(s"change: ${c}") }
 
         val changes = allChanges collect {
           case tc: TextChange => tc
@@ -130,6 +127,8 @@ class JavaRenameParticipant extends RenameParticipant with HasLogger with Symbol
 
     change
   }
+
+  def createChange(pm: IProgressMonitor): Change = null
 
   def getName(): String = "Scala participant for Java Rename refactorings"
 

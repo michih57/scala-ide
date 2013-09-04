@@ -10,7 +10,6 @@ import org.eclipse.jdt.internal.corext.refactoring.nls.changes.CreateFileChange
 import org.eclipse.ltk.core.refactoring.resource.MoveResourceChange
 import org.eclipse.ltk.core.refactoring.RefactoringStatus
 import org.eclipse.ltk.core.refactoring.CompositeChange
-
 import scala.tools.eclipse.javaelements.ScalaSourceFile
 import scala.tools.eclipse.refactoring.RefactoringAction
 import scala.tools.eclipse.refactoring.FullProjectIndex
@@ -19,6 +18,7 @@ import scala.tools.refactoring.common.TextChange
 import scala.tools.refactoring.common.NewFileChange
 import scala.tools.refactoring.common.ConsoleTracing
 import scala.tools.refactoring.implementations.MoveClass
+import scala.tools.eclipse.logging.HasLogger
 
 /**
  * The Move Class refactoring moves (non-nested) classes, objects and traits between different
@@ -29,12 +29,14 @@ import scala.tools.refactoring.implementations.MoveClass
  * like for example when a file is moved by drag&drop in the package explorer.
  *
  */
-class MoveClassAction extends RefactoringAction {
+class MoveClassAction extends RefactoringAction with HasLogger {
 
   def createRefactoring(start: Int, end: Int, file: ScalaSourceFile) = new MoveClassScalaIdeRefactoring(start, end, file)
 
   class MoveClassScalaIdeRefactoring(start: Int, end: Int, file: ScalaSourceFile)
       extends ScalaIdeRefactoring("Move Class/Trait/Object", file, start, end) with FullProjectIndex {
+
+    logger.debug(s"created move class refactoring for file: ${file.file.absolute.path}")
 
     val project = file.scalaProject
 
@@ -42,7 +44,9 @@ class MoveClassAction extends RefactoringAction {
 
     var target: IPackageFragment = null
 
-    def refactoringParameters = refactoring.RefactoringParameters(target.getElementName, moveSingleImpl)
+    var ignorePackages: List[String] = Nil
+
+    def refactoringParameters = refactoring.RefactoringParameters(target.getElementName, moveSingleImpl, ignorePackages)
 
     def setMoveSingleImpl(moveSingle: Boolean) {
       if(moveSingle && preparationResult.isRight) {

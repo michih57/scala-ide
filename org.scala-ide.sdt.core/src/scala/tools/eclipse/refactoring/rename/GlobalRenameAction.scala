@@ -108,9 +108,9 @@ class GlobalRenameAction extends RefactoringAction {
         status.addWarning("Indexing was cancelled, types will not be renamed.")
       }
 
-      if(!status.hasError()){
-        status.merge(javaParticipant.checkInitialConditions(pm))
-      }
+//      if(!status.hasError()){
+//        status.merge(javaParticipant.checkInitialConditions(pm))
+//      }
 
       status
     }
