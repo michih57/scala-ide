@@ -21,6 +21,7 @@ import org.eclipse.jdt.core.IMember
 import org.eclipse.jdt.core.IAnnotation
 import org.eclipse.jdt.core.IPackageDeclaration
 import org.eclipse.jdt.core.IPackageFragment
+import scala.tools.eclipse.javaelements.ScalaElement
 
 class JavaRenameParticipant extends RenameParticipant with HasLogger with SymbolFinder {
 
@@ -33,34 +34,45 @@ class JavaRenameParticipant extends RenameParticipant with HasLogger with Symbol
   override def initialize(element: Any) = {
     logger.debug(s"initializing JavaRenameParticipant for: ${element.getClass.getName}")
 
-    element match {
-      case iType: IType => {
-        logger.debug(s"have an IType: $iType")
-        selectedElement = Some(iType)
-      }
-      case iMember: IMember => {
-        logger.debug(s"have an IMember: $iMember")
-        selectedElement = Some(iMember)
-      }
-      case iAnnotation: IAnnotation => {
-        logger.debug(s"have an IAnnotation: $iAnnotation")
-        selectedElement = Some(iAnnotation)
-      }
-      case iPackageDeclaration: IPackageDeclaration => {
-        logger.debug(s"have an IPackageDeclaration: $iPackageDeclaration")
-        selectedElement = Some(iPackageDeclaration)
-      }
-      case iPackageFragment: IPackageFragment=> {
-        logger.debug(s"have an IPackageDeclaration: $iPackageFragment")
-        selectedElement = Some(iPackageFragment)
-      }
-      case _ => logger.debug(s"unknown element: $element")
+    // TODO: is this clean enough?
+    def isScalaElement(element: Any) = element match {
+      case scalaElement: ScalaElement => true
+      case _ => false
     }
+
+    if(!isScalaElement(element)) {
+        element match {
+        case iType: IType => {
+          logger.debug(s"have an IType: $iType")
+          selectedElement = Some(iType)
+        }
+        case iMember: IMember => {
+          logger.debug(s"have an IMember: $iMember")
+          selectedElement = Some(iMember)
+        }
+        case iAnnotation: IAnnotation => {
+          logger.debug(s"have an IAnnotation: $iAnnotation")
+          selectedElement = Some(iAnnotation)
+        }
+        case iPackageDeclaration: IPackageDeclaration => {
+          logger.debug(s"have an IPackageDeclaration: $iPackageDeclaration")
+          selectedElement = Some(iPackageDeclaration)
+        }
+        case iPackageFragment: IPackageFragment=> {
+          logger.debug(s"have an IPackageDeclaration: $iPackageFragment")
+          selectedElement = Some(iPackageFragment)
+        }
+        case _ => logger.debug(s"unknown element: $element")
+      }
+    }
+
+    logger.debug(s"selected element: $selectedElement")
 
     true
   }
 
   def checkConditions(pm: IProgressMonitor, context: CheckConditionsContext): RefactoringStatus = {
+    logger.debug("checking conditions in JavaRenameParticipant")
     val scalaMatch = selectedElement.flatMap { javaElement =>
       logger.debug("looking for occurrence of selected type in scala source")
       val scalaProject = ScalaPlugin.plugin.getScalaProject(javaElement.getJavaProject().getProject)
@@ -74,8 +86,10 @@ class JavaRenameParticipant extends RenameParticipant with HasLogger with Symbol
     refactoring = scalaMatch collect {
       case Match(scalaSourceFile, start, end) =>
         val renameAction = new GlobalRenameAction
-        new renameAction.RenameScalaIdeRefactoring(start, end, scalaSourceFile)
+        new renameAction.RenameScalaIdeRefactoring(start, end, scalaSourceFile, false)
     }
+
+    logger.debug(s"have a refactoring: $refactoring")
 
     val args = getArguments()
     logger.debug(s"arguments: $args")
@@ -90,7 +104,7 @@ class JavaRenameParticipant extends RenameParticipant with HasLogger with Symbol
       initialStatus
     }
 
-    logger.debug(statusOpt)
+    logger.debug(s"status opt: $statusOpt")
 
     statusOpt.getOrElse(new RefactoringStatus)
   }
