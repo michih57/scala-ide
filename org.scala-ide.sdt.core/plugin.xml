@@ -1162,8 +1162,8 @@
        point="org.eclipse.ltk.core.refactoring.renameParticipants">
      <renameParticipant
            id="scala.tools.eclipse.refactoring.java.renameparticipant"
-           class="scala.tools.eclipse.refactoring.rename.java.JavaRenameParticipant"
-           name="JavaRenameParticipant">
+           class="scala.tools.eclipse.refactoring.rename.java.ScalaParticipantForJavaRename"
+           name="ScalaParticipantForJavaRename">
          <enablement>
            <or>
              <with

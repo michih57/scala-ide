@@ -51,6 +51,7 @@ trait SymbolFinder extends HasLogger {
               }
             }
             case iAnnotation: IAnnotation =>
+              // TODO
               logger.debug(s"java element is IAnnotation: $iAnnotation")
               ???
 //            case iPackageDeclaration: IPackageDeclaration => global.rootMirror.getPackage(global.newTermName(iPackageDeclaration.getElementName()))

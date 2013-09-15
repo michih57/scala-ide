@@ -146,7 +146,7 @@ class RenameAction extends ActionAdapter with HasLogger {
           }
         }
       }
-      engine.search(pattern, Array(SearchEngine.getDefaultSearchParticipant()), scope, requestor, new NullProgressMonitor) // TODO: use proper progress monitor
+      engine.search(pattern, Array(SearchEngine.getDefaultSearchParticipant()), scope, requestor, new NullProgressMonitor) // TODO: use proper progress monitor?
 
       declaration
     }

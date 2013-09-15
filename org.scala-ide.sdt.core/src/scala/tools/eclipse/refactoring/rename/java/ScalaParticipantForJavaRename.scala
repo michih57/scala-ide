@@ -23,7 +23,7 @@ import org.eclipse.jdt.core.IPackageDeclaration
 import org.eclipse.jdt.core.IPackageFragment
 import scala.tools.eclipse.javaelements.ScalaElement
 
-class JavaRenameParticipant extends RenameParticipant with HasLogger with SymbolFinder {
+class ScalaParticipantForJavaRename extends RenameParticipant with HasLogger with SymbolFinder {
 
   private var selectedElement: Option[IJavaElement] = None
 
@@ -34,7 +34,6 @@ class JavaRenameParticipant extends RenameParticipant with HasLogger with Symbol
   override def initialize(element: Any) = {
     logger.debug(s"initializing JavaRenameParticipant for: ${element.getClass.getName}")
 
-    // TODO: is this clean enough?
     def isScalaElement(element: Any) = element match {
       case scalaElement: ScalaElement => true
       case _ => false
