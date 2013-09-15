@@ -84,11 +84,9 @@ class RenameAction extends ActionAdapter with HasLogger {
         }
 
         val isJavaSymbol = selectedSymbol.map(s => s.isJava).getOrElse(false)
-        logger.info("is java symbol rename: " + isJavaSymbol)
+        logger.debug("is java symbol rename: " + isJavaSymbol)
 
         val javaElement = if(isJavaSymbol) selectedSymbol.flatMap(s => findJavaDeclaration(s, scalaFile)) else None
-
-        logger.debug(s"java element: $javaElement")
 
         val renameSupport = javaElement collect {
           case method: IMethod => RenameSupport.create(method, method.getElementName(), RenameSupport.UPDATE_REFERENCES)
@@ -124,10 +122,6 @@ class RenameAction extends ActionAdapter with HasLogger {
         None
     }
 
-    logger.debug(s"symbol is val: ${symbol.isVal}")
-    logger.debug(s"symbol is var: ${symbol.isVar}")
-    logger.debug(s"symbol is method: ${symbol.isMethod}")
-
     val fullName = symbol.fullNameString
 
     val targetKind = patternTarget
@@ -141,7 +135,7 @@ class RenameAction extends ActionAdapter with HasLogger {
       val requestor = new SearchRequestor {
         override def acceptSearchMatch(m: SearchMatch) {
           logger.debug(s"found element: $m")
-          if (m.getElement().isInstanceOf[IJavaElement]) {
+          if (declaration.isEmpty && m.getElement().isInstanceOf[IJavaElement]) {
             declaration = Some(m.getElement().asInstanceOf[IJavaElement])
           }
         }

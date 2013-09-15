@@ -32,8 +32,8 @@ class JavaPartOfScalaMethodRenameTest {
     val method = scalaClass.findPrimaryType().getMethod("method", Array("I"))
     val pm = new NullProgressMonitor
     project.doWithPresentationCompiler { pc =>
-      val jRename = new JavaParticipantForScalaMethodRename(pc, method, method.getJavaProject())
-      val change = jRename.createChange("foo", pm)
+      val jRename = new JavaParticipantForScalaMethodRename(pc, method, "foo", method.getJavaProject())
+      val change = jRename.createChange(pm)
       val realChange = change.get
       val textFileChanges = change.toList.collect{case cc: CompositeChange => cc}.flatMap(_.getChildren).collect{case tfc: TextFileChange => tfc}
       textFileChanges.foreach{tfc => println(s"tfc: $tfc")}

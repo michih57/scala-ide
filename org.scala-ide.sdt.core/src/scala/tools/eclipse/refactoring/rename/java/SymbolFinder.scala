@@ -50,10 +50,10 @@ trait SymbolFinder extends HasLogger {
                 companion.info.member(global.newTermName(iMember.getElementName()))
               }
             }
-            case iAnnotation: IAnnotation =>
-              // TODO
-              logger.debug(s"java element is IAnnotation: $iAnnotation")
-              ???
+            // TODO: consider remaining cases
+//            case iAnnotation: IAnnotation =>
+//              logger.debug(s"java element is IAnnotation: $iAnnotation")
+//              ???
 //            case iPackageDeclaration: IPackageDeclaration => global.rootMirror.getPackage(global.newTermName(iPackageDeclaration.getElementName()))
 //            case iPackageFragment: IPackageFragment => global.rootMirror.getPackage(global.newTermName(iPackageFragment.getElementName()))
             case _ => global.NoSymbol
@@ -68,7 +68,6 @@ trait SymbolFinder extends HasLogger {
       project.withPresentationCompiler { compiler =>
         compiler.ask { () =>
           val occs = index.occurences(globalIndexes.jSymbol)
-          logger.debug(s"occurrences of selected symbol: $occs")
           val occ = occs.headOption
           val position = javaElement match {
             case iType: IType if iType.isAnnotation() => occ.flatMap { o =>

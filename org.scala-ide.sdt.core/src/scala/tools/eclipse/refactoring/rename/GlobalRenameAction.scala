@@ -119,10 +119,6 @@ class GlobalRenameAction extends RefactoringAction {
 
         // will be called after the refactoring has finished
         cleanup = cleanupHandler
-
-        participants = ScalaRenameParticipantProviders.providers() flatMap {
-          p => p.createParticipant(refactoring.global)(selectedSymbol)
-        }
       }
 
       if(pm.isCanceled) {
@@ -136,7 +132,7 @@ class GlobalRenameAction extends RefactoringAction {
       logger.debug("checking final conditions in RenameScalaIdeRefactoring")
       val status = super.checkFinalConditions(pm)
 
-      val selectedSymbol = selection().selectedSymbolTree map (_.symbol) getOrElse refactoring.global.NoSymbol
+      val selectedSymbol = preparationResult.right.get.renameProcessor.selectedSymbol//selection().selectedSymbolTree map (_.symbol) getOrElse refactoring.global.NoSymbol
 
       refactoring.global.askOption { () =>
         refactoring.doesNameCollide(name, selectedSymbol)
@@ -147,8 +143,12 @@ class GlobalRenameAction extends RefactoringAction {
           status.addWarning("The name \""+ name +"\" is already in use: "+ names)
       }
 
+      participants = ScalaRenameParticipantProviders.providers() flatMap {
+          p => p.createParticipant(refactoring.global)(selectedSymbol, name)
+      }
+
       val aggregatedStatus = participants.foldLeft(status)((s, participant) => {
-        s.merge(participant.checkConditions(name, pm))
+        s.merge(participant.checkConditions(pm))
         s
       })
 
@@ -173,7 +173,7 @@ class GlobalRenameAction extends RefactoringAction {
         case _ =>
       }
 
-      participants.flatMap(p => p.createChange(name, pm)).foreach(compositeChange.add)
+      participants.flatMap(p => p.createChange(pm)).foreach(compositeChange.add)
 
       cleanup()
 

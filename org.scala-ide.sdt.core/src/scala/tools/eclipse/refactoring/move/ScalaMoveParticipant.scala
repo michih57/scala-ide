@@ -38,10 +38,6 @@ class ScalaMoveParticipant extends MoveParticipant with HasLogger {
   }
 
   override def initialize(processor: RefactoringProcessor, element: Object, args: RefactoringArguments) = {
-    logger.debug(s"move arguments: $args, class of processor: ${processor.getClass.getCanonicalName()}")
-    logger.debug(s"class of args: ${args.getClass.getCanonicalName}")
-    // TODO: check for class of processor: if org.eclipse.jdt.internal.corext.refactoring.rename.RenamePackageProcessor
-    // ignore imports from same package in MoveClassRefactoring
     isPartOfRenamePackage = processor.isInstanceOf[org.eclipse.jdt.internal.corext.refactoring.rename.RenamePackageProcessor]
     super.initialize(processor, element, args)
   }
@@ -91,8 +87,7 @@ class ScalaMoveParticipant extends MoveParticipant with HasLogger {
         }
 
         if(targetPackage == null) {
-          val msg = "Could not find the target package for "+ destination.getFullPath +". Scala source files will not " +
-              "be refactored."
+          val msg = s"Could not find the target package for ${destination.getFullPath}. Scala source files will not be refactored."
           return RefactoringStatus.createWarningStatus(msg)
         }
 

@@ -39,17 +39,18 @@ import org.eclipse.jdt.internal.ui.search.JavaSearchQuery
 import org.eclipse.jdt.internal.ui.search.SearchParticipantsExtensionPoint
 import org.eclipse.jdt.ui.search.ISearchRequestor
 import org.eclipse.search.ui.text.Match
+import org.eclipse.jdt.core.refactoring.CompilationUnitChange
 
 trait ScalaRenameParticipantProvider {
 
-  def createParticipant(global: ScalaPresentationCompiler)(selectedSymbol: global.Symbol): Option[ScalaRenameParticipant]
+  def createParticipant(global: ScalaPresentationCompiler)(selectedSymbol: global.Symbol, newName: String): Option[ScalaRenameParticipant]
 
 }
 
 trait ScalaRenameParticipant {
 
-  def checkConditions(newName: String, pm: IProgressMonitor): RefactoringStatus
-  def createChange(newName: String, pm: IProgressMonitor): Option[Change]
+  def checkConditions(pm: IProgressMonitor): RefactoringStatus
+  def createChange(pm: IProgressMonitor): Option[Change]
 
 }
 
@@ -59,12 +60,14 @@ object ScalaRenameParticipantProviders {
   }
 }
 
-object JavaParticipantForScalaTypeRename extends ScalaRenameParticipantProvider {
+object JavaParticipantForScalaTypeRename extends ScalaRenameParticipantProvider with HasLogger {
 
-  def createParticipant(global: ScalaPresentationCompiler)(selectedSymbol: global.Symbol): Option[ScalaRenameParticipant] = {
+  def createParticipant(global: ScalaPresentationCompiler)(selectedSymbol: global.Symbol, newName: String): Option[ScalaRenameParticipant] = {
     if(selectedSymbol.isClass || selectedSymbol.isTrait || selectedSymbol.isModuleClass || selectedSymbol.isModule) {
-      val javaType = global.getJavaElement(selectedSymbol)
-      javaType.map(jt => new JavaParticipantForScalaTypeRename(global, jt))
+      // TODO: works only if companion class exists!
+      val symbol = if(selectedSymbol.isModule) selectedSymbol.companionClass else selectedSymbol
+      val javaType = global.getJavaElement(symbol)
+      javaType.map(jt => new JavaParticipantForScalaTypeRename(global, jt, newName))
     } else {
       None
     }
@@ -72,43 +75,48 @@ object JavaParticipantForScalaTypeRename extends ScalaRenameParticipantProvider 
 
 }
 
-class JavaParticipantForScalaTypeRename(global: ScalaPresentationCompiler, javaType: IJavaElement) extends ScalaRenameParticipant with HasLogger {
+class JavaParticipantForScalaTypeRename(global: ScalaPresentationCompiler, javaType: IJavaElement, newName: String) extends ScalaRenameParticipant with HasLogger {
 
-  val renamer: Option[RenameJavaElementDescriptor] = {
+  private val descriptor: Option[RenameJavaElementDescriptor] = {
     val contrib = RefactoringCore.getRefactoringContribution(IJavaRefactorings.RENAME_TYPE)
     if (contrib.createDescriptor().isInstanceOf[RenameJavaElementDescriptor]) {
       val desc: RenameJavaElementDescriptor = contrib.createDescriptor().asInstanceOf[RenameJavaElementDescriptor]
       desc.setJavaElement(javaType)
       desc.setUpdateReferences(true)
+      desc.setNewName(newName)
       Some(desc)
     } else {
       None
     }
   }
 
-  var wrappedRefactoring: Option[Refactoring] = None
+  private val validationState = descriptor.map(_.validateDescriptor)
 
-  def checkConditions(newName: String, pm: IProgressMonitor): RefactoringStatus = {
-    logger.debug("checking conditions in TypeRenamer")
-    val initialConditionsState = renamer map { r =>
-      r.setNewName(newName)
-      val state = r.validateDescriptor()
-      val refactoring = r.createRefactoring(state)
-      wrappedRefactoring = Some(refactoring)
-      state.merge(refactoring.checkInitialConditions(pm))
-      state
-    } getOrElse (new RefactoringStatus)
-
-
-    val finalConditionsState = wrappedRefactoring.map(r => r.checkFinalConditions(pm)).getOrElse(new RefactoringStatus)
-    finalConditionsState.merge(initialConditionsState)
-    finalConditionsState
+  val wrappedRefactoring: Option[Refactoring] = (descriptor, validationState) match {
+    case (Some(desc), Some(vs)) =>
+      Some(desc.createRefactoring(vs))
+    case _ => None
   }
 
-  def createChange(newName: String, pm: IProgressMonitor): Option[Change] = {
-    logger.debug("creating change in TypeRenamer")
+  def checkConditions(pm: IProgressMonitor): RefactoringStatus = (wrappedRefactoring, validationState) match {
+    case (Some(ref), Some(vs)) =>
+      vs.merge(ref.checkInitialConditions(pm))
+      if(vs.isOK()) {
+        vs.merge(ref.checkFinalConditions(pm))
+      }
+      vs
+    case _ =>
+      val errorState = new RefactoringStatus
+      errorState.addError("Failed to create Java participant for Scala Type Rename")
+      errorState
+  }
+
+  def createChange(pm: IProgressMonitor): Option[Change] = {
     def isNotPureJavaChange(c: Change) = c match {
       case _: RenameCompilationUnitChange => true
+      case cuc: CompilationUnitChange =>
+        logger.debug(s"file extension: ${cuc.getFile().getFileExtension}")
+        cuc.getFile().getFileExtension() != "java"
       case _ => false
     }
 
@@ -132,42 +140,45 @@ class JavaParticipantForScalaTypeRename(global: ScalaPresentationCompiler, javaT
       case _ => c
     }
 
-    wrappedRefactoring map { r =>
+    wrappedRefactoring flatMap { r =>
       logger.debug("creating change in java participant of scala rename")
       val change = r.createChange(pm)
       debugChange(change)
       val pureJavaChanges = filterPureJavaChanges(change)
       debugChange(change)
-      new CompositeChange("java participant") {
-        add(pureJavaChanges)
+
+      pureJavaChanges match {
+        case cc: CompositeChange if cc.getChildren.isEmpty => None
+        case _ => Some(new CompositeChange("java participant") {
+          add(pureJavaChanges)
+        })
       }
+
+
     }
   }
 
 }
 
 object JavaParticipantForScalaMethodRename extends ScalaRenameParticipantProvider {
-  def createParticipant(global: ScalaPresentationCompiler)(selectedSymbol: global.Symbol): Option[ScalaRenameParticipant] = {
+  def createParticipant(global: ScalaPresentationCompiler)(selectedSymbol: global.Symbol, newName: String): Option[ScalaRenameParticipant] = {
     if(selectedSymbol.isMethod) {
       val javaElement = global.getJavaElement(selectedSymbol)
-      javaElement.map(je => new JavaParticipantForScalaMethodRename(global, je, je.getJavaProject()))
+      javaElement.map(je => new JavaParticipantForScalaMethodRename(global, je, newName, je.getJavaProject()))
     } else {
       None
     }
   }
 }
 
-class JavaParticipantForScalaMethodRename(global: ScalaPresentationCompiler, method: IJavaElement, project: IJavaProject) extends ScalaRenameParticipant with HasLogger {
+class JavaParticipantForScalaMethodRename(global: ScalaPresentationCompiler, method: IJavaElement, newName: String, project: IJavaProject) extends ScalaRenameParticipant with HasLogger {
 
-  def checkConditions(newName: String, pm: IProgressMonitor): RefactoringStatus = {
-    logger.debug("checking conditions in JavaParticipantForScalaMethodRename")
+  def checkConditions(pm: IProgressMonitor): RefactoringStatus = {
     new RefactoringStatus
   }
 
-  def createChange(newName: String, pm: IProgressMonitor): Option[Change] = {
+  def createChange(pm: IProgressMonitor): Option[Change] = {
     val references = findCusOfJavaReferences(method, project, pm)
-    logger.debug("cus containing method references:")
-    references.foreach(ref => logger.debug(s"reference: (class: ${ref.getClass.getCanonicalName}), $ref"))
 
     def createChangeForAST(root: CompilationUnit, file: IFile) = {
       val rewrite = ASTRewrite.create(root.getAST())
@@ -175,7 +186,6 @@ class JavaParticipantForScalaMethodRename(global: ScalaPresentationCompiler, met
       val invocations: ListBuffer[MethodInvocation] = ListBuffer.empty
       root.accept(new ASTVisitor {
         override def visit(methodInvocation: MethodInvocation): Boolean = {
-          logger.debug(s"visiting invocation: $methodInvocation, name: ${methodInvocation.getName()}")
           if(methodInvocation.getName().getIdentifier() == method.getElementName()) {
             invocations += methodInvocation
           }
@@ -185,17 +195,13 @@ class JavaParticipantForScalaMethodRename(global: ScalaPresentationCompiler, met
 
       val textEditGroup = new TextEditGroup(root.getJavaElement().getElementName())
 
-      logger.debug("nr invocations: " + invocations.size)
-
       invocations.foreach{i =>
-        logger.debug(s"invocation: ${i}")
         val oldName = i.getName()
         rewrite.replace(oldName, newSimpleName, textEditGroup)
       }
 
       val textEdit = rewrite.rewriteAST()
 
-      logger.debug(s"text edit: $textEdit")
       val change = new TextFileChange("java change", file)
       change.setEdit(textEdit)
       change
@@ -205,9 +211,7 @@ class JavaParticipantForScalaMethodRename(global: ScalaPresentationCompiler, met
 
       val path = cu.getResource().getFullPath().removeFirstSegments(1)
 
-      logger.debug(s"path is: $path")
       val file = project.getProject.getFile(path)
-      logger.debug(s"file is: $file, exists: ${file.exists()}")
       val parser = ASTParser.newParser(AST.JLS4);
       parser.setSource(cu);
       val astRoot = parser.createAST(null).asInstanceOf[CompilationUnit];
@@ -225,7 +229,7 @@ class JavaParticipantForScalaMethodRename(global: ScalaPresentationCompiler, met
   }
 
   private def findCusOfJavaReferences(jElem: IJavaElement, project: IJavaProject, pm: IProgressMonitor): List[ICompilationUnit] = {
-    val pattern = SearchPattern.createPattern(jElem, IJavaSearchConstants.REFERENCES)
+    val pattern = SearchPattern.createPattern(jElem, IJavaSearchConstants.ALL_OCCURRENCES)
     val javaProject: IJavaElement = JavaCore.create(project.getProject)
     val scope = SearchEngine.createJavaSearchScope(Array(javaProject))
     val engine = new SearchEngine()
@@ -257,13 +261,5 @@ class JavaParticipantForScalaMethodRename(global: ScalaPresentationCompiler, met
     }
 
     cus.toList.collect{case cu: ICompilationUnit => cu}
-
-//    val querySpecification = new ElementQuerySpecification(jElem, IJavaSearchConstants.REFERENCES, scope, "workspace scope description -> HAE?")
-//    val query = new JavaSearchQuery(querySpecification)
-//    logger.debug(s"query run result: ${query.run(pm)}")
-//    val searchResult = query.getSearchResult()
-//
-//
-//    Nil
   }
 }
